@@ -59,3 +59,6 @@ docs/openedx_userapi.*.rst
 # Private requirements
 requirements/private.in
 requirements/private.txt
+
+# Venv
+.venv
