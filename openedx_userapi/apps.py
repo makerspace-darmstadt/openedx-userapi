@@ -10,4 +10,13 @@ class OpenedxUserapiConfig(AppConfig):
     Configuration for the openedx_userapi Django application.
     """
 
-    name = 'openedx_userapi'
+    name = "openedx_userapi"
+    plugin_app = {
+        "url_config": {
+            "lms.djangoapp": {
+                "namespace": "openedx_userapi",
+                "regex": r"^userapi/",
+                "relative_path": "urls",
+            },
+        },
+    }
