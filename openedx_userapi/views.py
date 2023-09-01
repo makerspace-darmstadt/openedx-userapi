@@ -13,7 +13,10 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
 
-from openedx.core.djangoapps.user_api.accounts.api import check_account_exists
+from openedx.core.djangoapps.user_api.accounts.api import (
+    get_username_existence_validation_error,
+    get_email_existence_validation_error
+)
 from openedx.core.lib.api.authentication import (
     OAuth2AuthenticationAllowInactiveUser,
 )
@@ -21,15 +24,19 @@ from openedx.core.lib.api.permissions import (
     IsStaffOrOwner,
 )
 
-from student.forms import get_registration_extension_form
-from student.views import create_account_with_params
-from student.models import (
-    UserProfile,
+from openedx.core.djangoapps.user_authn.views.registration_form import (
+    get_registration_extension_form
 )
+from openedx.core.djangoapps.user_authn.views.register import create_account_with_params
+from common.djangoapps.student.models import UserProfile
 
 from .utils import auto_generate_username, send_activation_email
 
 log = logging.getLogger(__name__)
+
+
+def _check_account_exists(email, username):
+    return get_email_existence_validation_error(email) or get_username_existence_validation_error(username)
 
 
 class CreateUserAccountView(APIView):
@@ -71,7 +78,7 @@ class CreateUserAccountView(APIView):
         username = request.data.get("username")
 
         # Handle duplicate email/username
-        conflicts = check_account_exists(email=email, username=username)
+        conflicts = _check_account_exists(email=email, username=username)
         if conflicts:
             errors = {"user_message": "User already exists"}
             return Response(errors, status=409)
@@ -109,7 +116,7 @@ class CreateUserAccountWithoutPasswordView(APIView):
         email = request.data.get("email")
 
         # Handle duplicate email/username
-        conflicts = check_account_exists(email=email)
+        conflicts = _check_account_exists(email=email)
         if conflicts:
             errors = {"user_message": "User already exists"}
             return Response(errors, status=409)
@@ -189,7 +196,7 @@ class UserAccountConnect(APIView):
                 try:
                     validate_email(new_email)
 
-                    if check_account_exists(email=new_email):
+                    if _check_account_exists(email=new_email):
                         errors = {
                             "user_message": "The email %s is in use by another user"
                             % (new_email)
@@ -271,7 +278,7 @@ class UpdateUserAccount(APIView):
 
         # update email
         if "email" in data and data["email"] != user.email:
-            user_exists = check_account_exists(email=data["email"])
+            user_exists = _check_account_exists(email=data["email"])
             if user_exists:
                 errors = {
                     "integrity_error": "the user email you're trying to set already belongs to another user"
